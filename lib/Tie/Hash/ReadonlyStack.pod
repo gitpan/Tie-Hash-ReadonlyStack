@@ -4,7 +4,7 @@ Tie::Hash::ReadonlyStack - Treat multiple hashes as a single hash and do not mod
 
 =head1 VERSION
 
-This document describes Tie::Hash::ReadonlyStack version 0.1
+This document describes Tie::Hash::ReadonlyStack version 0.2
 
 =head1 SYNOPSIS
 
@@ -127,6 +127,20 @@ Adds the hash to the stack before the "main" one.
 
 It will not add the "main" hash or an already existing one. If you want to replace a hash you must del_lookup_hash() first.
 
+If %hash is not tied then this happens:
+
+   $tie_obj->clear_compiled_cache(keys %hash)
+
+If it is tied (since keys() could possibly have a lot of wasted overhead *) then the new hash is checked for the existence of each compiled key which is deleted from the cache if it exists.
+
+If this behavior is undesireable with your tied hash you can call L</add_lookup_override_hash_without_clearing_cache()> and handle the cache however you need to via L</clear_compiled_cache()>
+
+* Imagine it is tied to a DB_File with ten million keys. keys() and each() would be very expensive for no advantage...
+
+=head3 add_lookup_override_hash_without_clearing_cache()
+
+Same as add_lookup_override_hash() except with out the cache clearing behavior.
+
 =head3 add_lookup_fallback_hash()
 
 Adds the hash to the stack after the "main" one.
@@ -155,6 +169,18 @@ To make it return false when the hash being delted does not exist give it a seco
     else {
         print "The given hash has been removed from the stack";
     }
+
+=head3 clear_compiled_cache()
+
+This method empties the cache or un-caches a given list of keys. 
+
+    $tie_obj->clear_compiled_cache(); # remove all cached values
+    
+The 'no argument' form returns 1.
+
+    $tie_obj->clear_compiled_cache('foo','bar'); # remove 'foo' and 'bar' from the cache
+    
+The 'list of keys arguments' form returns the number of keys actually deleted or false if none of the given keys existed (and hence nothing was deleted)
 
 =head3 get_keys_not_in_stack()
 

@@ -3,15 +3,53 @@ package Tie::Hash::ReadonlyStack;
 # use warnings;
 use strict;
 
-$Tie::Hash::ReadonlyStack::VERSION = '0.1';
+$Tie::Hash::ReadonlyStack::VERSION = '0.2';
 
-sub add_lookup_override_hash {
+sub clear_compiled_cache {
+    my ( $self, @keys ) = @_;
+    
+    if (@keys) {
+        my $count = 0;
+        for my $k (@keys) {
+            if (exists $self->{'compiled'}{$k}) {
+                delete $self->{'compiled'}{$k} if exists $self->{'compiled'}{$k};
+                $count++;
+            }
+        }
+        return $count if $count;
+        return;
+    }
+    else {
+        %{ $self->{'compiled'} } = (); 
+        return 1;
+    }
+}
+
+sub add_lookup_override_hash_without_clearing_cache {
     my ( $self, $name, $hr ) = @_;
+    
     return if $name eq 'readonly_hash';
     return if exists $self->{'hashes'}{$name};
 
     unshift @{ $self->{'order'} }, $name;
     $self->{'hashes'}{$name} = $hr;
+}
+
+sub add_lookup_override_hash {
+    my ( $self, $name, $hr ) = @_;
+    
+    if ( !tied(%{$hr}) ) { 
+        $self->clear_compiled_cache(keys %{$hr});
+    }
+    else {
+        for my $key ( keys %{ $self->{'compiled'} } ) {
+            if ( exists $self->{'compiled'}{$key} ) {
+                delete $self->{'compiled'}{$key};
+            }
+        }
+    }
+    
+    return $self->add_lookup_override_hash_without_clearing_cache($name, $hr);
 }
 
 sub add_lookup_fallback_hash {

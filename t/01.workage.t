@@ -1,4 +1,4 @@
-use Test::More tests => 44;
+use Test::More tests => 52;
 
 BEGIN {
    use_ok( 'Tie::Hash::ReadonlyStack' );
@@ -40,11 +40,11 @@ is_deeply([$tie_obj->get_keys_not_in_stack()], [], 'get_keys_not_in_stack() retu
 
 ok(!exists $hash{'c'}, 'sanity: key "c" does not exist');
 
-ok($tie_obj->add_lookup_override_hash('before', \%before), 'add_lookup_override_hash() returns true');
+ok($tie_obj->add_lookup_override_hash_without_clearing_cache('before', \%before), 'add_lookup_override_hash_without_clearing_cache() returns true');
 ok($hash{'a'} == 1, 'key "a" has "main" value');
 ok($hash{'b'} == 2, 'sanity: key "b" still has "main" value');
 
-ok(!$tie_obj->add_lookup_override_hash('before', {'a'=>3}), "adding existing hash returns false");
+ok(!$tie_obj->add_lookup_override_hash_without_clearing_cache('before', {'a'=>3}), "add_lookup_override_hash_without_clearing_cache() adding existing hash returns false");
 ok($hash{'a'} == 1, 'key "a" still has "main" value');
 
 ok(!$tie_obj->add_lookup_override_hash('readonly_hash', {}), 'returns false for main hash override');
@@ -71,6 +71,18 @@ ok($hash{'a'} == 1, 'key "a" has "main" value again');
 ok($hash{'b'} == 2, 'sanity: key "b" still has "main" value');
 ok(!exists $hash{'c'}, 'key "c" does not exist again');
 
+ok($tie_obj->add_lookup_override_hash('before', \%before), 'add_lookup_override_hash() returns true');
+ok($hash{'a'} == 2, 'key "a" has new override value');
+ok(!$tie_obj->add_lookup_override_hash('before', {'a'=>3}), "adding existing hash returns false");
+ok($hash{'a'} == 2, 'key "a" still has new override value');
+
 is_deeply(\%mydata, {'a' => 1, 'b' => 2}, 'main hash unmodified');
 is_deeply(\%before, {'a' => 2}, 'override hash unmodified');
 is_deeply(\%after, {'c' => 3}, 'fallback hash unmodified');
+
+$hash{'newkey'} = 1;
+$hash{'newkey2'} = 2;
+ok($tie_obj->clear_compiled_cache(qw(newkey newkey2 noexisty)) == 2, 'clear_compiled_cache() w/ key list including non existant returns count of actually deleted');
+ok(!$tie_obj->clear_compiled_cache(qw(noexisty noexisty)), 'clear_compiled_cache() w/ key list including only non existants returns false');
+ok($tie_obj->clear_compiled_cache() == 1, 'clear_compiled_cache() w/ no key returns true (1)');
+ok(keys %{$tie_obj->{'compiled'}} == 0, 'clear_compiled_cache() w/ no key empties compiled cache hash');
